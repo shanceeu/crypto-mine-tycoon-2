@@ -213,7 +213,6 @@ func _build_hud() -> void:
     stage_label = _new_label("Stage: Prospector")
     selected_label = _new_label("Selected: none")
     objective_label = _new_label("Objective: Reach $2,500")
-
     for child in [cash_label, btc_label, hash_label, power_label, market_label, stage_label, selected_label, objective_label]:
         topbar.add_child(child)
 
@@ -231,27 +230,27 @@ func _build_hud() -> void:
     vbox.add_child(buttons)
 
     var buy_button = Button.new()
-    buy_button.text = "Buy Rig"
+    buy_button.text = "Buy Rig ($220)"
     buy_button.pressed.connect(_on_buy_rig_pressed)
     buttons.add_child(buy_button)
 
     var upgrade_button = Button.new()
-    upgrade_button.text = "Upgrade Rig"
+    upgrade_button.text = "Upgrade Rig ($120+)"
     upgrade_button.pressed.connect(_on_upgrade_rig_pressed)
     buttons.add_child(upgrade_button)
 
     var power_button = Button.new()
-    power_button.text = "Power Grid +"
+    power_button.text = "Power Grid + ($260)"
     power_button.pressed.connect(_on_power_upgrade_pressed)
     buttons.add_child(power_button)
 
     var cooling_button = Button.new()
-    cooling_button.text = "Cooling +"
+    cooling_button.text = "Cooling + ($320)"
     cooling_button.pressed.connect(_on_cooling_upgrade_pressed)
     buttons.add_child(cooling_button)
 
     var fuel_button = Button.new()
-    fuel_button.text = "Green Energy"
+    fuel_button.text = "Green Energy ($500)"
     fuel_button.pressed.connect(_on_green_energy_pressed)
     buttons.add_child(fuel_button)
 
