@@ -9,16 +9,20 @@ const STAGES := [
     "Mining Foreman",
     "Regional Operator",
     "Hash Farm CEO",
-    "Global Crypto Empire"
+    "Global Crypto Empire",
+    "Interstellar Crypto Dynasty"
 ]
 
 const STAGE_TARGETS := [
     2500.0,
-    15000.0,
-    75000.0,
-    350000.0,
-    1500000.0
+    12000.0,
+    50000.0,
+    180000.0,
+    600000.0,
+    2000000.0
 ]
+
+const ASSET_ORDER := ["BTC", "ETH", "SOL"]
 
 var tiles: Array = []
 var selected_data: Dictionary = {}
@@ -26,8 +30,8 @@ var game_active := false
 var event_timer := 0.0
 
 var cash := 1800.0
-var crypto_balance := 0.0
-var market_price := 12850.0
+var balances: Dictionary = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0}
+var asset_prices: Dictionary = {"BTC": 45000.0, "ETH": 2600.0, "SOL": 140.0}
 var total_hash_rate := 0.0
 var power_capacity := 70.0
 var power_usage := 0.0
@@ -41,6 +45,8 @@ var menu_root: CanvasLayer
 var hud_root: CanvasLayer
 var cash_label: Label
 var btc_label: Label
+var eth_label: Label
+var sol_label: Label
 var hash_label: Label
 var power_label: Label
 var market_label: Label
@@ -68,10 +74,18 @@ func _start_game() -> void:
     if hud_root != null:
         hud_root.visible = true
 
-    if selected_data.is_empty() and tiles.size() > 0 and tiles[0].size() > 0:
-        selected_data = tiles[0][0]
+    if selected_data.is_empty():
+        selected_data = _find_first_available_tile()
 
     _set_status("Mining operation online.")
+
+func _find_first_available_tile() -> Dictionary:
+    for x in range(GRID_SIZE):
+        for y in range(GRID_SIZE):
+            var cell: Dictionary = tiles[x][y]
+            if cell.has("occupied") and not cell["occupied"]:
+                return cell
+    return {}
 
 func _build_menu() -> void:
     menu_root = CanvasLayer.new()
@@ -110,7 +124,7 @@ func _build_menu() -> void:
     vbox.add_child(title)
 
     var subtitle := Label.new()
-    subtitle.text = "Expand your mining empire, upgrade power and cooling, and ride the crypto market."
+    subtitle.text = "Build your empire, balance your hash power, and expand into multiple crypto markets."
     subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     subtitle.custom_minimum_size = Vector2(500, 80)
     vbox.add_child(subtitle)
@@ -247,13 +261,16 @@ func _build_hud() -> void:
 
     cash_label = _new_label("Cash: $0.00")
     btc_label = _new_label("BTC: 0.0000")
+    eth_label = _new_label("ETH: 0.0000")
+    sol_label = _new_label("SOL: 0.0000")
     hash_label = _new_label("Hash: 0 H/s")
     power_label = _new_label("Power: 0 / 0 MW")
-    market_label = _new_label("Market: $0 / BTC")
+    market_label = _new_label("Market: BTC $0")
     stage_label = _new_label("Stage: Prospector")
     selected_label = _new_label("Selected: none")
     objective_label = _new_label("Objective: Reach $2,500")
-    for child in [cash_label, btc_label, hash_label, power_label, market_label, stage_label, selected_label, objective_label]:
+
+    for child in [cash_label, btc_label, eth_label, sol_label, hash_label, power_label, market_label, stage_label, selected_label, objective_label]:
         topbar.add_child(child)
 
     progress_bar = ProgressBar.new()
@@ -275,27 +292,27 @@ func _build_hud() -> void:
     buttons.add_child(buy_button)
 
     var upgrade_button := Button.new()
-    upgrade_button.text = "Upgrade Rig ($120+)"
+    upgrade_button.text = "Upgrade Rig"
     upgrade_button.pressed.connect(_on_upgrade_rig_pressed)
     buttons.add_child(upgrade_button)
 
     var power_button := Button.new()
-    power_button.text = "Power Grid + ($260)"
+    power_button.text = "Grid +"
     power_button.pressed.connect(_on_power_upgrade_pressed)
     buttons.add_child(power_button)
 
     var cooling_button := Button.new()
-    cooling_button.text = "Cooling + ($320)"
+    cooling_button.text = "Cooling +"
     cooling_button.pressed.connect(_on_cooling_upgrade_pressed)
     buttons.add_child(cooling_button)
 
-    var fuel_button := Button.new()
-    fuel_button.text = "Green Energy ($500)"
-    fuel_button.pressed.connect(_on_green_energy_pressed)
-    buttons.add_child(fuel_button)
+    var energy_button := Button.new()
+    energy_button.text = "Green Energy"
+    energy_button.pressed.connect(_on_green_energy_pressed)
+    buttons.add_child(energy_button)
 
     var sell_button := Button.new()
-    sell_button.text = "Sell BTC"
+    sell_button.text = "Sell All"
     sell_button.pressed.connect(_on_sell_pressed)
     buttons.add_child(sell_button)
 
@@ -306,7 +323,7 @@ func _build_hud() -> void:
     lower_panel.add_child(lower_vbox)
 
     status_label = _new_label("Status: waiting")
-    log_label = _new_label("Miners: 0 | Cooling: 1 | Empire value: $0")
+    log_label = _new_label("Miners: 0 | Cooling: 1 | Wallet value: $0")
     lower_vbox.add_child(status_label)
     lower_vbox.add_child(log_label)
 
@@ -324,8 +341,8 @@ func _on_start_game_pressed() -> void:
 
 func _on_reset_game_pressed() -> void:
     cash = 1800.0
-    crypto_balance = 0.0
-    market_price = 12850.0
+    balances = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0}
+    asset_prices = {"BTC": 45000.0, "ETH": 2600.0, "SOL": 140.0}
     total_hash_rate = 0.0
     power_capacity = 70.0
     power_usage = 0.0
@@ -365,54 +382,75 @@ func _process(delta: float) -> void:
         _trigger_market_event()
 
     var overload := max(0.0, power_usage - power_capacity)
-    var cooling_bonus := 1.0 + (cooling_level - 1) * 0.14
-    var power_penalty := 1.0 - (overload / max(1.0, power_capacity)) * 0.55
+    var cooling_bonus := 1.0 + (cooling_level - 1) * 0.16
+    var power_penalty := 1.0 - (overload / max(1.0, power_capacity)) * 0.65
     var green_bonus := 1.0 + energy_boost
     efficiency = clamp(power_penalty * cooling_bonus * green_bonus, 0.35, 1.8)
 
-    market_price = max(6500.0, market_price + randf_range(-40.0, 80.0) * delta * 0.9)
+    var btc_price_move := randf_range(-100.0, 230.0) * delta * 0.7
+    var eth_price_move := randf_range(-30.0, 90.0) * delta * 0.7
+    var sol_price_move := randf_range(-3.0, 12.0) * delta * 0.8
+    asset_prices["BTC"] = max(15000.0, asset_prices["BTC"] + btc_price_move)
+    asset_prices["ETH"] = max(800.0, asset_prices["ETH"] + eth_price_move)
+    asset_prices["SOL"] = max(35.0, asset_prices["SOL"] + sol_price_move)
 
     if total_hash_rate > 0.0:
-        var mined := total_hash_rate * delta * 0.014 * efficiency
-        crypto_balance += mined
+        var btc_yield := total_hash_rate * delta * 0.0017 * efficiency
+        var eth_yield := total_hash_rate * delta * 0.0009 * efficiency * (0.6 + stage_index * 0.14)
+        var sol_yield := total_hash_rate * delta * 0.0013 * efficiency * (0.4 + stage_index * 0.18)
+
+        balances["BTC"] += btc_yield
+        balances["ETH"] += eth_yield
+        balances["SOL"] += sol_yield
 
     _update_progression()
     _update_ui()
 
 func _trigger_market_event() -> void:
-    var roll := randi() % 4
+    var roll := randi() % 5
     match roll:
         0:
-            market_price *= 1.15
-            event_label.text = "Market Event: Bull Run"
-            _set_status("Bull market! Crypto prices surge.")
+            asset_prices["BTC"] *= 1.12
+            event_label.text = "Market Event: BTC pump"
+            _set_status("BTC mania! Prices surge.")
         1:
-            market_price *= 0.88
-            event_label.text = "Market Event: Cooling Crash"
-            _set_status("Market dip! Prices are falling.")
+            asset_prices["ETH"] *= 1.15
+            event_label.text = "Market Event: ETH momentum"
+            _set_status("ETH rallies across the market.")
         2:
-            energy_boost = 0.2
-            event_label.text = "Market Event: Green Energy Boom"
-            _set_status("Renewable energy boosts efficiency.")
+            asset_prices["SOL"] *= 1.18
+            event_label.text = "Market Event: Solana surge"
+            _set_status("SOL breaks out to new highs.")
         3:
-            energy_boost = 0.0
-            event_label.text = "Market Event: Stable"
-            _set_status("Market stabilizes.")
+            asset_prices["BTC"] *= 0.9
+            asset_prices["ETH"] *= 0.92
+            asset_prices["SOL"] *= 0.88
+            event_label.text = "Market Event: Crypto dip"
+            _set_status("Market cools down for a moment.")
+        4:
+            energy_boost = 0.18
+            event_label.text = "Market Event: Green energy"
+            _set_status("Renewables boost mining efficiency.")
+
     _update_ui()
 
 func _update_progression() -> void:
-    while stage_index < STAGES.size() - 1 and cash >= STAGE_TARGETS[stage_index + 1]:
+    var max_stage := STAGE_TARGETS.size() - 1
+
+    while stage_index < max_stage and cash >= STAGE_TARGETS[stage_index + 1]:
         stage_index += 1
 
+    stage_index = clamp(stage_index, 0, max_stage)
+
     var current_target := STAGE_TARGETS[stage_index]
-    var next_target := STAGE_TARGETS[min(stage_index + 1, STAGE_TARGETS.size() - 1)]
+    var next_target := STAGE_TARGETS[min(stage_index + 1, max_stage)]
     var progress_value := 0.0
 
-    if stage_index == STAGES.size() - 1:
+    if stage_index >= max_stage:
         progress_value = 100.0
     else:
         var span := max(1.0, next_target - current_target)
-        var offset := cash - current_target
+        var offset := max(0.0, cash - current_target)
         progress_value = clamp((offset / span) * 100.0, 0.0, 100.0)
 
     progress_bar.value = progress_value
@@ -423,16 +461,26 @@ func _update_progression() -> void:
     else:
         objective_label.text = "Objective: Final empire reached"
 
+func _ensure_valid_selection() -> bool:
+    if selected_data.is_empty():
+        selected_data = _find_first_available_tile()
+        return not selected_data.is_empty()
+
+    if selected_data.has("occupied") and selected_data["occupied"]:
+        var free_tile := _find_first_available_tile()
+        if free_tile.is_empty():
+            return false
+        selected_data = free_tile
+
+    return true
+
 func _on_buy_rig_pressed() -> void:
     if not game_active:
         return
 
-    if selected_data.is_empty():
-        if tiles.size() > 0 and tiles[0].size() > 0:
-            selected_data = tiles[0][0]
-        else:
-            _set_status("No tiles available.")
-            return
+    if not _ensure_valid_selection():
+        _set_status("No free tiles available.")
+        return
 
     if not selected_data.has("occupied"):
         _set_status("This tile is invalid.")
@@ -442,7 +490,7 @@ func _on_buy_rig_pressed() -> void:
         _set_status("This tile is already occupied.")
         return
 
-    var cost := 220.0
+    var cost := 220.0 + (miners_owned * 30.0)
     if cash < cost:
         _set_status("Not enough cash for a miner.")
         return
@@ -460,19 +508,16 @@ func _on_buy_rig_pressed() -> void:
     total_hash_rate += selected_data["hash_rate"]
     power_usage += selected_data["power_draw"]
     miners_owned += 1
-    _set_status("ASIC rig purchased.")
+    _set_status("ASIC rig purchased on (%d, %d)." % [selected_data["x"], selected_data["y"]])
     _update_ui()
 
 func _on_upgrade_rig_pressed() -> void:
     if not game_active:
         return
 
-    if selected_data.is_empty():
-        if tiles.size() > 0 and tiles[0].size() > 0:
-            selected_data = tiles[0][0]
-        else:
-            _set_status("No tiles available.")
-            return
+    if not _ensure_valid_selection():
+        _set_status("No rig selected to upgrade.")
+        return
 
     if not selected_data.has("occupied") or not selected_data.has("rig_level"):
         _set_status("This tile is invalid.")
@@ -483,19 +528,14 @@ func _on_upgrade_rig_pressed() -> void:
         return
 
     var current_level: int = int(selected_data["rig_level"])
-    var upgrade_cost: float = 120.0 + (current_level * 85.0)
+    var upgrade_cost: float = 120.0 + (current_level * 75.0)
 
     if cash < upgrade_cost:
         _set_status("Not enough cash to upgrade.")
         return
 
-    var old_hash: float = 0.0
-    var old_power: float = 0.0
-
-    if selected_data.has("hash_rate"):
-        old_hash = float(selected_data["hash_rate"])
-    if selected_data.has("power_draw"):
-        old_power = float(selected_data["power_draw"])
+    var old_hash: float = selected_data.get("hash_rate", 0.0)
+    var old_power: float = selected_data.get("power_draw", 0.0)
 
     cash -= upgrade_cost
     selected_data["rig_level"] = current_level + 1
@@ -518,13 +558,13 @@ func _on_power_upgrade_pressed() -> void:
     if not game_active:
         return
 
-    var cost := 260.0 + (power_capacity * 1.7)
+    var cost := 260.0 + (power_capacity * 1.8)
     if cash < cost:
         _set_status("Not enough cash to expand the grid.")
         return
 
     cash -= cost
-    power_capacity += 30.0
+    power_capacity += 25.0
     _set_status("Power grid expanded.")
     _update_ui()
 
@@ -532,7 +572,7 @@ func _on_cooling_upgrade_pressed() -> void:
     if not game_active:
         return
 
-    var cost := 320.0 + (cooling_level * 110.0)
+    var cost := 320.0 + (cooling_level * 100.0)
     if cash < cost:
         _set_status("Not enough cash for cooling.")
         return
@@ -552,7 +592,7 @@ func _on_green_energy_pressed() -> void:
         return
 
     cash -= cost
-    energy_boost += 0.10
+    energy_boost += 0.1
     _set_status("Green energy supply online.")
     _update_ui()
 
@@ -560,25 +600,36 @@ func _on_sell_pressed() -> void:
     if not game_active:
         return
 
-    if crypto_balance <= 0.0:
-        _set_status("No BTC to sell yet.")
+    var total_value := 0.0
+    for asset_name in ASSET_ORDER:
+        total_value += balances[asset_name] * asset_prices[asset_name]
+
+    if total_value <= 0.0:
+        _set_status("No crypto available to sell.")
         return
 
-    var value := crypto_balance * market_price
-    cash += value
-    crypto_balance = 0.0
-    _set_status("Sold BTC for $%.2f." % value)
+    cash += total_value
+    for asset_name in ASSET_ORDER:
+        balances[asset_name] = 0.0
+
+    _set_status("Sold all crypto for $%.2f." % total_value)
     _update_ui()
 
 func _update_ui() -> void:
     if cash_label == null:
         return
 
+    var wallet_value := 0.0
+    for asset_name in ASSET_ORDER:
+        wallet_value += balances[asset_name] * asset_prices[asset_name]
+
     cash_label.text = "Cash: $%.2f" % cash
-    btc_label.text = "BTC: %.4f" % crypto_balance
+    btc_label.text = "BTC: %.4f" % balances["BTC"]
+    eth_label.text = "ETH: %.4f" % balances["ETH"]
+    sol_label.text = "SOL: %.4f" % balances["SOL"]
     hash_label.text = "Hash: %.1f H/s" % total_hash_rate
     power_label.text = "Power: %.1f / %.1f MW" % [power_usage, power_capacity]
-    market_label.text = "Market: $%.2f / BTC" % market_price
+    market_label.text = "Market: BTC $%.0f | ETH $%.0f | SOL $%.0f" % [asset_prices["BTC"], asset_prices["ETH"], asset_prices["SOL"]]
 
     if selected_data.is_empty():
         selected_label.text = "Selected: none"
@@ -586,11 +637,7 @@ func _update_ui() -> void:
         selected_label.text = "Selected: (%d, %d)" % [selected_data["x"], selected_data["y"]]
 
     status_label.text = "Status: mining %.2fx efficient" % efficiency
-    log_label.text = "Miners: %d | Cooling: %d | Empire value: $%.2f" % [
-        miners_owned,
-        cooling_level,
-        crypto_balance * market_price
-    ]
+    log_label.text = "Miners: %d | Cooling: %d | Wallet value: $%.2f" % [miners_owned, cooling_level, wallet_value]
 
 func _set_status(message: String) -> void:
     if status_label != null:
