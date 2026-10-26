@@ -67,8 +67,10 @@ func _start_game() -> void:
         menu_root.visible = false
     if hud_root != null:
         hud_root.visible = true
-    if tiles.size() > 0 and tiles[0].size() > 0 and selected_data.is_empty():
+
+    if selected_data.is_empty() and tiles.size() > 0 and tiles[0].size() > 0:
         selected_data = tiles[0][0]
+
     _set_status("Mining operation online.")
 
 func _build_menu() -> void:
@@ -426,8 +428,11 @@ func _on_buy_rig_pressed() -> void:
         return
 
     if selected_data.is_empty():
-        _set_status("Select a tile first.")
-        return
+        if tiles.size() > 0 and tiles[0].size() > 0:
+            selected_data = tiles[0][0]
+        else:
+            _set_status("No tiles available.")
+            return
 
     if not selected_data.has("occupied"):
         _set_status("This tile is invalid.")
@@ -463,8 +468,11 @@ func _on_upgrade_rig_pressed() -> void:
         return
 
     if selected_data.is_empty():
-        _set_status("Select a rig first.")
-        return
+        if tiles.size() > 0 and tiles[0].size() > 0:
+            selected_data = tiles[0][0]
+        else:
+            _set_status("No tiles available.")
+            return
 
     if not selected_data.has("occupied") or not selected_data.has("rig_level"):
         _set_status("This tile is invalid.")
