@@ -77,7 +77,7 @@ func _build_menu() -> void:
     menu_root = CanvasLayer.new()
     add_child(menu_root)
 
-    var root = MarginContainer.new()
+    var root := MarginContainer.new()
     root.anchor_left = 0.0
     root.anchor_top = 0.0
     root.anchor_right = 1.0
@@ -88,50 +88,50 @@ func _build_menu() -> void:
     root.offset_bottom = -24
     menu_root.add_child(root)
 
-    var center = CenterContainer.new()
+    var center := CenterContainer.new()
     center.anchor_left = 0.0
     center.anchor_top = 0.0
     center.anchor_right = 1.0
     center.anchor_bottom = 1.0
     root.add_child(center)
 
-    var panel = PanelContainer.new()
+    var panel := PanelContainer.new()
     panel.custom_minimum_size = Vector2(600, 420)
     center.add_child(panel)
 
-    var vbox = VBoxContainer.new()
+    var vbox := VBoxContainer.new()
     vbox.alignment = BoxContainer.ALIGNMENT_CENTER
     panel.add_child(vbox)
 
-    var title = Label.new()
+    var title := Label.new()
     title.text = "Crypto Mine Tycoon 2"
     title.add_theme_font_size_override("font_size", 34)
     title.modulate = Color(0.88, 0.96, 1.0)
     vbox.add_child(title)
 
-    var subtitle = Label.new()
+    var subtitle := Label.new()
     subtitle.text = "Expand your mining empire, upgrade power and cooling, and ride the crypto market."
     subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     subtitle.custom_minimum_size = Vector2(500, 80)
     vbox.add_child(subtitle)
 
-    var spacer = Control.new()
+    var spacer := Control.new()
     spacer.custom_minimum_size = Vector2(0, 18)
     vbox.add_child(spacer)
 
-    var start_button = Button.new()
+    var start_button := Button.new()
     start_button.text = "Start Mining"
     start_button.custom_minimum_size = Vector2(260, 52)
     start_button.pressed.connect(_on_start_game_pressed)
     vbox.add_child(start_button)
 
-    var reset_button = Button.new()
+    var reset_button := Button.new()
     reset_button.text = "Reset Run"
     reset_button.custom_minimum_size = Vector2(260, 52)
     reset_button.pressed.connect(_on_reset_game_pressed)
     vbox.add_child(reset_button)
 
-    var quit_button = Button.new()
+    var quit_button := Button.new()
     quit_button.text = "Quit"
     quit_button.custom_minimum_size = Vector2(260, 52)
     quit_button.pressed.connect(_on_quit_game_pressed)
@@ -153,7 +153,7 @@ func _build_game_world() -> void:
                 "type": "mine"
             }
 
-            var tile = Area2D.new()
+            var tile := Area2D.new()
             tile.position = _iso_to_screen(x, y)
             tile.set_meta("grid_pos", Vector2i(x, y))
 
@@ -166,7 +166,7 @@ func _build_game_world() -> void:
                     _set_status("Selected tile (%d, %d)." % [x, y])
             )
 
-            var shape = CollisionPolygon2D.new()
+            var shape := CollisionPolygon2D.new()
             shape.polygon = PackedVector2Array([
                 Vector2(0, -TILE_H * 0.5),
                 Vector2(TILE_W * 0.5, 0),
@@ -175,14 +175,14 @@ func _build_game_world() -> void:
             ])
             tile.add_child(shape)
 
-            var ground = Polygon2D.new()
+            var ground := Polygon2D.new()
             ground.polygon = shape.polygon
             ground.color = Color(0.12, 0.15, 0.2)
             ground.texture = _make_ground_texture()
             ground.texture_scale = Vector2(0.5, 0.5)
             tile.add_child(ground)
 
-            var rig = Polygon2D.new()
+            var rig := Polygon2D.new()
             rig.polygon = PackedVector2Array([
                 Vector2(-10, -10),
                 Vector2(10, -10),
@@ -228,7 +228,7 @@ func _build_hud() -> void:
     hud_root = CanvasLayer.new()
     add_child(hud_root)
 
-    var root = MarginContainer.new()
+    var root := MarginContainer.new()
     root.anchor_left = 0.0
     root.anchor_top = 0.0
     root.anchor_right = 1.0
@@ -239,10 +239,10 @@ func _build_hud() -> void:
     root.offset_bottom = -18
     hud_root.add_child(root)
 
-    var vbox = VBoxContainer.new()
+    var vbox := VBoxContainer.new()
     root.add_child(vbox)
 
-    var topbar = HBoxContainer.new()
+    var topbar := HBoxContainer.new()
     vbox.add_child(topbar)
 
     cash_label = _new_label("Cash: $0.00")
@@ -266,43 +266,43 @@ func _build_hud() -> void:
     event_label = _new_label("Market Event: Stable")
     vbox.add_child(event_label)
 
-    var buttons = HBoxContainer.new()
+    var buttons := HBoxContainer.new()
     vbox.add_child(buttons)
 
-    var buy_button = Button.new()
+    var buy_button := Button.new()
     buy_button.text = "Buy Rig ($220)"
     buy_button.pressed.connect(_on_buy_rig_pressed)
     buttons.add_child(buy_button)
 
-    var upgrade_button = Button.new()
+    var upgrade_button := Button.new()
     upgrade_button.text = "Upgrade Rig ($120+)"
     upgrade_button.pressed.connect(_on_upgrade_rig_pressed)
     buttons.add_child(upgrade_button)
 
-    var power_button = Button.new()
+    var power_button := Button.new()
     power_button.text = "Power Grid + ($260)"
     power_button.pressed.connect(_on_power_upgrade_pressed)
     buttons.add_child(power_button)
 
-    var cooling_button = Button.new()
+    var cooling_button := Button.new()
     cooling_button.text = "Cooling + ($320)"
     cooling_button.pressed.connect(_on_cooling_upgrade_pressed)
     buttons.add_child(cooling_button)
 
-    var fuel_button = Button.new()
+    var fuel_button := Button.new()
     fuel_button.text = "Green Energy ($500)"
     fuel_button.pressed.connect(_on_green_energy_pressed)
     buttons.add_child(fuel_button)
 
-    var sell_button = Button.new()
+    var sell_button := Button.new()
     sell_button.text = "Sell BTC"
     sell_button.pressed.connect(_on_sell_pressed)
     buttons.add_child(sell_button)
 
-    var lower_panel = PanelContainer.new()
+    var lower_panel := PanelContainer.new()
     vbox.add_child(lower_panel)
 
-    var lower_vbox = VBoxContainer.new()
+    var lower_vbox := VBoxContainer.new()
     lower_panel.add_child(lower_vbox)
 
     status_label = _new_label("Status: waiting")
@@ -313,7 +313,7 @@ func _build_hud() -> void:
     hud_root.visible = false
 
 func _new_label(text: String) -> Label:
-    var label = Label.new()
+    var label := Label.new()
     label.text = text
     label.add_theme_font_size_override("font_size", 16)
     label.modulate = Color(0.92, 0.97, 1.0)
@@ -380,7 +380,7 @@ func _process(delta: float) -> void:
     _update_ui()
 
 func _trigger_market_event() -> void:
-    var roll = randi() % 4
+    var roll := randi() % 4
     match roll:
         0:
             market_price *= 1.15
@@ -404,15 +404,15 @@ func _update_progression() -> void:
     while stage_index < STAGES.size() - 1 and cash >= STAGE_TARGETS[stage_index + 1]:
         stage_index += 1
 
-    var current_target = STAGE_TARGETS[stage_index]
-    var next_target = STAGE_TARGETS[min(stage_index + 1, STAGE_TARGETS.size() - 1)]
+    var current_target := STAGE_TARGETS[stage_index]
+    var next_target := STAGE_TARGETS[min(stage_index + 1, STAGE_TARGETS.size() - 1)]
     var progress_value := 0.0
 
     if stage_index == STAGES.size() - 1:
         progress_value = 100.0
     else:
-        var span = max(1.0, next_target - current_target)
-        var offset = cash - current_target
+        var span := max(1.0, next_target - current_target)
+        var offset := cash - current_target
         progress_value = clamp((offset / span) * 100.0, 0.0, 100.0)
 
     progress_bar.value = progress_value
