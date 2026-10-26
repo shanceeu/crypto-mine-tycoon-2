@@ -390,9 +390,15 @@ func _update_progression() -> void:
 func _on_buy_rig_pressed() -> void:
     if not game_active:
         return
+
     if selected_data.is_empty():
         _set_status("Select a tile first.")
         return
+
+    if not selected_data.has("occupied"):
+        _set_status("This tile is invalid.")
+        return
+
     if selected_data["occupied"]:
         _set_status("This tile is already occupied.")
         return
@@ -407,8 +413,11 @@ func _on_buy_rig_pressed() -> void:
     selected_data["rig_level"] = 1
     selected_data["hash_rate"] = 18.0
     selected_data["power_draw"] = 9.0
-    selected_data["rig_node"].visible = true
-    selected_data["rig_node"].color = Color(0.28, 0.96, 0.78)
+
+    if selected_data.has("rig_node") and selected_data["rig_node"] != null:
+        selected_data["rig_node"].visible = true
+        selected_data["rig_node"].color = Color(0.28, 0.96, 0.78)
+
     total_hash_rate += selected_data["hash_rate"]
     power_usage += selected_data["power_draw"]
     miners_owned += 1
@@ -418,31 +427,55 @@ func _on_buy_rig_pressed() -> void:
 func _on_upgrade_rig_pressed() -> void:
     if not game_active:
         return
-    if selected_data.is_empty() or not selected_data["occupied"]:
-        _set_status("Select a rig to upgrade.")
+
+    if selected_data.is_empty():
+        _set_status("Select a rig first.")
         return
 
-    var current_level := selected_data["rig_level"]
-    var upgrade_cost := 120.0 + (current_level * 85.0)
+    if not selected_data.has("occupied") or not selected_data.has("rig_level"):
+        _set_status("This tile is invalid.")
+        return
+
+    if not selected_data["occupied"]:
+        _set_status("There is no rig to upgrade.")
+        return
+
+    var current_level: int = int(selected_data["rig_level"])
+    var upgrade_cost: float = 120.0 + (current_level * 85.0)
+
     if cash < upgrade_cost:
         _set_status("Not enough cash to upgrade.")
         return
 
-    var old_hash := selected_data["hash_rate"]
-    var old_power := selected_data["power_draw"]
+    var old_hash: float = 0.0
+    var old_power: float = 0.0
+
+    if selected_data.has("hash_rate"):
+        old_hash = float(selected_data["hash_rate"])
+    if selected_data.has("power_draw"):
+        old_power = float(selected_data["power_draw"])
+
     cash -= upgrade_cost
-    selected_data["rig_level"] += 1
+    selected_data["rig_level"] = current_level + 1
     selected_data["hash_rate"] = 18.0 * selected_data["rig_level"]
     selected_data["power_draw"] = 9.0 * selected_data["rig_level"]
+
     total_hash_rate += selected_data["hash_rate"] - old_hash
     power_usage += selected_data["power_draw"] - old_power
-    selected_data["rig_node"].scale = Vector2(1.0 + selected_data["rig_level"] * 0.12, 1.0 + selected_data["rig_level"] * 0.12)
+
+    if selected_data.has("rig_node") and selected_data["rig_node"] != null:
+        selected_data["rig_node"].scale = Vector2(
+            1.0 + selected_data["rig_level"] * 0.12,
+            1.0 + selected_data["rig_level"] * 0.12
+        )
+
     _set_status("Rig upgraded to level %d." % selected_data["rig_level"])
     _update_ui()
 
 func _on_power_upgrade_pressed() -> void:
     if not game_active:
         return
+
     var cost := 260.0 + (power_capacity * 1.7)
     if cash < cost:
         _set_status("Not enough cash to expand the grid.")
@@ -456,6 +489,7 @@ func _on_power_upgrade_pressed() -> void:
 func _on_cooling_upgrade_pressed() -> void:
     if not game_active:
         return
+
     var cost := 320.0 + (cooling_level * 110.0)
     if cash < cost:
         _set_status("Not enough cash for cooling.")
@@ -483,6 +517,7 @@ func _on_green_energy_pressed() -> void:
 func _on_sell_pressed() -> void:
     if not game_active:
         return
+
     if crypto_balance <= 0.0:
         _set_status("No BTC to sell yet.")
         return
@@ -494,6 +529,9 @@ func _on_sell_pressed() -> void:
     _update_ui()
 
 func _update_ui() -> void:
+    if cash_label == null:
+        return
+
     cash_label.text = "Cash: $%.2f" % cash
     btc_label.text = "BTC: %.4f" % crypto_balance
     hash_label.text = "Hash: %.1f H/s" % total_hash_rate
@@ -513,7 +551,8 @@ func _update_ui() -> void:
     ]
 
 func _set_status(message: String) -> void:
-    status_label.text = "Status: %s" % message
+    if status_label != null:
+        status_label.text = "Status: %s" % message
 
 func _iso_to_screen(x: int, y: int) -> Vector2:
     return Vector2((x - y) * (TILE_W * 0.5), (x + y) * (TILE_H * 0.5))
