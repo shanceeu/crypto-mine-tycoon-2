@@ -56,9 +56,20 @@ func _ready() -> void:
     _build_menu()
     _build_game_world()
     _build_hud()
+    _start_game()
     _update_progression()
     _update_ui()
     _set_status("Press Start to begin your crypto empire.")
+
+func _start_game() -> void:
+    game_active = true
+    if menu_root != null:
+        menu_root.visible = false
+    if hud_root != null:
+        hud_root.visible = true
+    if tiles.size() > 0 and tiles[0].size() > 0 and selected_data.is_empty():
+        selected_data = tiles[0][0]
+    _set_status("Mining operation online.")
 
 func _build_menu() -> void:
     menu_root = CanvasLayer.new()
@@ -165,6 +176,8 @@ func _build_game_world() -> void:
             var ground = Polygon2D.new()
             ground.polygon = shape.polygon
             ground.color = Color(0.12, 0.15, 0.2)
+            ground.texture = _make_ground_texture()
+            ground.texture_scale = Vector2(0.5, 0.5)
             tile.add_child(ground)
 
             var rig = Polygon2D.new()
@@ -176,13 +189,38 @@ func _build_game_world() -> void:
             ])
             rig.position = Vector2(0, -18)
             rig.visible = false
-            rig.color = Color(0.28, 0.96, 0.78)
+            rig.color = Color(1.0, 1.0, 1.0)
+            rig.texture = _make_rig_texture()
+            rig.texture_scale = Vector2(0.65, 0.65)
             tile.add_child(rig)
 
             tile_data["node"] = tile
             tile_data["rig_node"] = rig
             add_child(tile)
             tiles[x].append(tile_data)
+
+func _make_ground_texture() -> Texture2D:
+    var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+    image.fill(Color(0.12, 0.18, 0.28, 1.0))
+    for y in range(32):
+        for x in range(32):
+            if (x + y) % 7 == 0:
+                image.set_pixel(x, y, Color(0.22, 0.30, 0.40, 1.0))
+    return ImageTexture.create_from_image(image)
+
+func _make_rig_texture() -> Texture2D:
+    var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+    image.fill(Color(0.10, 0.20, 0.30, 1.0))
+    for y in range(32):
+        for x in range(32):
+            if x in [4, 10, 16, 22, 28] and y % 5 == 0:
+                image.set_pixel(x, y, Color(0.85, 0.96, 1.0, 1.0))
+            if y in [4, 10, 16, 22, 28] and x % 5 == 0:
+                image.set_pixel(x, y, Color(0.55, 0.90, 0.90, 1.0))
+    for i in range(6):
+        image.set_pixel(6 + i * 4, 14, Color(0.20, 0.96, 0.78, 1.0))
+        image.set_pixel(14, 6 + i * 4, Color(0.20, 0.96, 0.78, 1.0))
+    return ImageTexture.create_from_image(image)
 
 func _build_hud() -> void:
     hud_root = CanvasLayer.new()
@@ -280,12 +318,7 @@ func _new_label(text: String) -> Label:
     return label
 
 func _on_start_game_pressed() -> void:
-    game_active = true
-    menu_root.visible = false
-    hud_root.visible = true
-    _set_status("Mining operation online.")
-    _update_progression()
-    _update_ui()
+    _start_game()
 
 func _on_reset_game_pressed() -> void:
     cash = 1800.0
@@ -312,6 +345,7 @@ func _on_reset_game_pressed() -> void:
                 cell["rig_node"].visible = false
                 cell["rig_node"].scale = Vector2.ONE
 
+    _start_game()
     _update_progression()
     _update_ui()
     _set_status("Run reset. Time to build a new empire.")
