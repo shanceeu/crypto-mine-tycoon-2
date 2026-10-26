@@ -62,7 +62,6 @@ func _ready() -> void:
     _build_menu()
     _build_game_world()
     _build_hud()
-    _start_game()
     _update_progression()
     _update_ui()
     _set_status("Press Start to begin your crypto empire.")
@@ -160,10 +159,12 @@ func _build_game_world() -> void:
                 "y": y,
                 "occupied": false,
                 "rig_level": 0,
+                "rig_count": 0,
                 "hash_rate": 0.0,
                 "power_draw": 0.0,
                 "node": null,
                 "rig_node": null,
+                "level_label": null,
                 "type": "mine"
             }
 
@@ -198,20 +199,30 @@ func _build_game_world() -> void:
 
             var rig := Polygon2D.new()
             rig.polygon = PackedVector2Array([
-                Vector2(-10, -10),
-                Vector2(10, -10),
-                Vector2(10, 10),
-                Vector2(-10, 10)
+                Vector2(-12, -12),
+                Vector2(12, -12),
+                Vector2(12, 12),
+                Vector2(-12, 12)
             ])
             rig.position = Vector2(0, -18)
             rig.visible = false
-            rig.color = Color(1.0, 1.0, 1.0)
+            rig.color = Color(0.30, 0.96, 0.82)
             rig.texture = _make_rig_texture()
-            rig.texture_scale = Vector2(0.65, 0.65)
+            rig.texture_scale = Vector2(0.76, 0.76)
             tile.add_child(rig)
+
+            var label := Label.new()
+            label.text = "0"
+            label.position = Vector2(0, 18)
+            label.modulate = Color(1, 1, 1)
+            label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            label.add_theme_font_size_override("font_size", 16)
+            label.visible = false
+            tile.add_child(label)
 
             tile_data["node"] = tile
             tile_data["rig_node"] = rig
+            tile_data["level_label"] = label
             add_child(tile)
             tiles[x].append(tile_data)
 
@@ -222,11 +233,13 @@ func _make_ground_texture() -> Texture2D:
         for x in range(32):
             if (x + y) % 7 == 0:
                 image.set_pixel(x, y, Color(0.22, 0.30, 0.40, 1.0))
+            if x % 8 == 0 and y % 8 == 0:
+                image.set_pixel(x, y, Color(0.17, 0.24, 0.33, 1.0))
     return ImageTexture.create_from_image(image)
 
 func _make_rig_texture() -> Texture2D:
     var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
-    image.fill(Color(0.10, 0.20, 0.30, 1.0))
+    image.fill(Color(0.07, 0.12, 0.18, 1.0))
     for y in range(32):
         for x in range(32):
             if x in [4, 10, 16, 22, 28] and y % 5 == 0:
@@ -265,7 +278,7 @@ func _build_hud() -> void:
     sol_label = _new_label("SOL: 0.0000")
     hash_label = _new_label("Hash: 0 H/s")
     power_label = _new_label("Power: 0 / 0 MW")
-    market_label = _new_label("Market: BTC $0")
+    market_label = _new_label("Market: BTC $0 | ETH $0 | SOL $0")
     stage_label = _new_label("Stage: Prospector")
     selected_label = _new_label("Selected: none")
     objective_label = _new_label("Objective: Reach $2,500")
@@ -358,11 +371,15 @@ func _on_reset_game_pressed() -> void:
             var cell: Dictionary = tiles[x][y]
             cell["occupied"] = false
             cell["rig_level"] = 0
+            cell["rig_count"] = 0
             cell["hash_rate"] = 0.0
             cell["power_draw"] = 0.0
             if cell["rig_node"] != null:
                 cell["rig_node"].visible = false
                 cell["rig_node"].scale = Vector2.ONE
+            if cell["level_label"] != null:
+                cell["level_label"].visible = false
+                cell["level_label"].text = "0"
 
     _start_game()
     _update_progression()
@@ -387,17 +404,14 @@ func _process(delta: float) -> void:
     var green_bonus := 1.0 + energy_boost
     efficiency = clamp(power_penalty * cooling_bonus * green_bonus, 0.35, 1.8)
 
-    var btc_price_move := randf_range(-100.0, 230.0) * delta * 0.7
-    var eth_price_move := randf_range(-30.0, 90.0) * delta * 0.7
-    var sol_price_move := randf_range(-3.0, 12.0) * delta * 0.8
-    asset_prices["BTC"] = max(15000.0, asset_prices["BTC"] + btc_price_move)
-    asset_prices["ETH"] = max(800.0, asset_prices["ETH"] + eth_price_move)
-    asset_prices["SOL"] = max(35.0, asset_prices["SOL"] + sol_price_move)
+    asset_prices["BTC"] = max(15000.0, asset_prices["BTC"] + randf_range(-120.0, 260.0) * delta * 0.7)
+    asset_prices["ETH"] = max(800.0, asset_prices["ETH"] + randf_range(-30.0, 90.0) * delta * 0.7)
+    asset_prices["SOL"] = max(35.0, asset_prices["SOL"] + randf_range(-3.0, 12.0) * delta * 0.8)
 
     if total_hash_rate > 0.0:
-        var btc_yield := total_hash_rate * delta * 0.0017 * efficiency
-        var eth_yield := total_hash_rate * delta * 0.0009 * efficiency * (0.6 + stage_index * 0.14)
-        var sol_yield := total_hash_rate * delta * 0.0013 * efficiency * (0.4 + stage_index * 0.18)
+        var btc_yield := total_hash_rate * delta * 0.0019 * efficiency
+        var eth_yield := total_hash_rate * delta * 0.0010 * efficiency * (0.6 + stage_index * 0.12)
+        var sol_yield := total_hash_rate * delta * 0.0014 * efficiency * (0.45 + stage_index * 0.16)
 
         balances["BTC"] += btc_yield
         balances["ETH"] += eth_yield
@@ -430,8 +444,7 @@ func _trigger_market_event() -> void:
         4:
             energy_boost = 0.18
             event_label.text = "Market Event: Green energy"
-            _set_status("Renewables boost mining efficiency.")
-
+            _set_status("Renewable power boosts mining efficiency.")
     _update_ui()
 
 func _update_progression() -> void:
@@ -474,6 +487,33 @@ func _ensure_valid_selection() -> bool:
 
     return true
 
+func _apply_rig_visual(cell: Dictionary) -> void:
+    if cell["rig_node"] == null:
+        return
+
+    var count := int(cell.get("rig_count", 0))
+    var level := int(cell.get("rig_level", 0))
+
+    if count <= 0:
+        cell["rig_node"].visible = false
+        if cell["level_label"] != null:
+            cell["level_label"].visible = false
+        return
+
+    cell["rig_node"].visible = true
+    var tint := Color(0.28, 0.96, 0.78)
+    if level >= 3:
+        tint = Color(0.18, 0.82, 1.0)
+    elif level >= 2:
+        tint = Color(0.48, 0.80, 1.0)
+
+    cell["rig_node"].color = tint
+    cell["rig_node"].scale = Vector2(1.0 + level * 0.08, 1.0 + level * 0.08)
+
+    if cell["level_label"] != null:
+        cell["level_label"].text = str(count)
+        cell["level_label"].visible = true
+
 func _on_buy_rig_pressed() -> void:
     if not game_active:
         return
@@ -490,24 +530,23 @@ func _on_buy_rig_pressed() -> void:
         _set_status("This tile is already occupied.")
         return
 
-    var cost := 220.0 + (miners_owned * 30.0)
-    if cash < cost:
+    var base_cost := 220.0 + (miners_owned * 30.0)
+    if cash < base_cost:
         _set_status("Not enough cash for a miner.")
         return
 
-    cash -= cost
+    cash -= base_cost
     selected_data["occupied"] = true
     selected_data["rig_level"] = 1
+    selected_data["rig_count"] = 1
     selected_data["hash_rate"] = 18.0
     selected_data["power_draw"] = 9.0
-
-    if selected_data.has("rig_node") and selected_data["rig_node"] != null:
-        selected_data["rig_node"].visible = true
-        selected_data["rig_node"].color = Color(0.28, 0.96, 0.78)
+    _apply_rig_visual(selected_data)
 
     total_hash_rate += selected_data["hash_rate"]
     power_usage += selected_data["power_draw"]
     miners_owned += 1
+
     _set_status("ASIC rig purchased on (%d, %d)." % [selected_data["x"], selected_data["y"]])
     _update_ui()
 
@@ -528,7 +567,7 @@ func _on_upgrade_rig_pressed() -> void:
         return
 
     var current_level: int = int(selected_data["rig_level"])
-    var upgrade_cost: float = 120.0 + (current_level * 75.0)
+    var upgrade_cost: float = 120.0 + (current_level * 90.0)
 
     if cash < upgrade_cost:
         _set_status("Not enough cash to upgrade.")
@@ -539,17 +578,13 @@ func _on_upgrade_rig_pressed() -> void:
 
     cash -= upgrade_cost
     selected_data["rig_level"] = current_level + 1
+    selected_data["rig_count"] = max(1, selected_data.get("rig_count", 1))
     selected_data["hash_rate"] = 18.0 * selected_data["rig_level"]
     selected_data["power_draw"] = 9.0 * selected_data["rig_level"]
 
     total_hash_rate += selected_data["hash_rate"] - old_hash
     power_usage += selected_data["power_draw"] - old_power
-
-    if selected_data.has("rig_node") and selected_data["rig_node"] != null:
-        selected_data["rig_node"].scale = Vector2(
-            1.0 + selected_data["rig_level"] * 0.12,
-            1.0 + selected_data["rig_level"] * 0.12
-        )
+    _apply_rig_visual(selected_data)
 
     _set_status("Rig upgraded to level %d." % selected_data["rig_level"])
     _update_ui()
@@ -592,7 +627,7 @@ func _on_green_energy_pressed() -> void:
         return
 
     cash -= cost
-    energy_boost += 0.1
+    energy_boost += 0.10
     _set_status("Green energy supply online.")
     _update_ui()
 
@@ -629,7 +664,11 @@ func _update_ui() -> void:
     sol_label.text = "SOL: %.4f" % balances["SOL"]
     hash_label.text = "Hash: %.1f H/s" % total_hash_rate
     power_label.text = "Power: %.1f / %.1f MW" % [power_usage, power_capacity]
-    market_label.text = "Market: BTC $%.0f | ETH $%.0f | SOL $%.0f" % [asset_prices["BTC"], asset_prices["ETH"], asset_prices["SOL"]]
+    market_label.text = "Market: BTC $%.0f | ETH $%.0f | SOL $%.0f" % [
+        asset_prices["BTC"],
+        asset_prices["ETH"],
+        asset_prices["SOL"]
+    ]
 
     if selected_data.is_empty():
         selected_label.text = "Selected: none"
@@ -637,7 +676,11 @@ func _update_ui() -> void:
         selected_label.text = "Selected: (%d, %d)" % [selected_data["x"], selected_data["y"]]
 
     status_label.text = "Status: mining %.2fx efficient" % efficiency
-    log_label.text = "Miners: %d | Cooling: %d | Wallet value: $%.2f" % [miners_owned, cooling_level, wallet_value]
+    log_label.text = "Miners: %d | Cooling: %d | Wallet value: $%.2f" % [
+        miners_owned,
+        cooling_level,
+        wallet_value
+    ]
 
 func _set_status(message: String) -> void:
     if status_label != null:
